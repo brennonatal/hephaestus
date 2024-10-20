@@ -181,3 +181,4 @@ docker/volumes
 
 # Sensitive values
 helm/values.yaml
+images/

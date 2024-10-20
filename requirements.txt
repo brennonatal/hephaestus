@@ -15,6 +15,7 @@ langchain-groq==0.2.0
 langsmith==0.1.136
 orjson==3.10.9
 packaging==24.1
+pillow==11.0.0
 pydantic==2.9.2
 pydantic_core==2.23.4
 PyYAML==6.0.2

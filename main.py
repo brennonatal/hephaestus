@@ -1,13 +1,28 @@
-import random
 import getpass
+import io
+import logging
 import os
-from prompts import GUIDE, IDEAS
-from langchain_groq import ChatGroq
+import random
+import time
+import uuid
+
+import requests
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_groq import ChatGroq
+from PIL import Image
+
+from prompts import GUIDE, IDEAS
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 # Validate or prompt for the Groq API key
 if "GROQ_API_KEY" not in os.environ:
     os.environ["GROQ_API_KEY"] = getpass.getpass("Enter your Groq API key: ")
+if "HF_TOKEN" not in os.environ:
+    os.environ["HF_TOKEN"] = getpass.getpass("Enter your HuggingFace access token: ")
+
 
 # Step 1: Select a random topic
 topics = list(IDEAS.keys())
@@ -43,7 +58,42 @@ prompt = ChatPromptTemplate.from_messages(
 chain = prompt | llm
 
 # Step 6: Invoke the chain with the topic and instructions
+logging.info(f"Requesting theme {selected_topic}...")
 ai_msg = chain.invoke({"topic": selected_topic, "instructions": topic_instructions})
 
 # Step 7: Print the output
-print(ai_msg.content)
+image_prompt = ai_msg.content.strip()
+logging.info(image_prompt)
+
+
+API_URL = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-dev"
+headers = {"Authorization": f"Bearer {os.environ["HF_TOKEN"]}"}
+
+
+def query(payload):
+    response = requests.post(API_URL, headers=headers, json=payload)
+    return response.content
+
+
+logging.info("Generating image...")
+generation_params = {
+    "inputs": image_prompt,
+    "parameters": {
+        "num_inference_steps": 25,
+        "guidance_scale": 3.5,
+        "height": 1024,
+        "width": 768,
+    },
+}
+
+start_time = time.time()
+image_bytes = query(generation_params)
+logging.info(f"Image generated in {time.time() - start_time} seconds.")
+
+# save image
+image = Image.open(io.BytesIO(image_bytes))
+topic_folder = selected_topic.replace(" ", "_").lower()
+os.makedirs(topic_folder, exist_ok=True)
+image.save(f"{topic_folder}/{uuid.uuid4()}.png")
+
+logging.info(f"Image saved to {topic_folder}/")
