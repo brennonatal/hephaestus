@@ -5,16 +5,17 @@ import logging
 import os
 import random
 import sys
+import tempfile
 import time
 import uuid
 
 import requests
-
-# from diffusers import FluxControlNetModel, FluxControlNetPipeline
+from gradio_client import Client, handle_file
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 from PIL import Image
 from pydantic import BaseModel, Field
+from retry import retry
 
 from prompts import GUIDE, IDEAS
 
@@ -132,6 +133,7 @@ def create_chat_prompt_template():
     )
 
 
+@retry(Exception, delay=1, backoff=2, tries=3)
 def generate_image_prompt(chain, guide, topic, instructions, schema):
     """Generate an image prompt using the structured LLM chain."""
     logging.info(f"Requesting image prompt for topic: '{topic}'...")
@@ -169,6 +171,7 @@ def save_image(selected_topic, image_bytes):
     logging.info(f"Image saved to {image_path}")
 
 
+@retry(Exception, delay=1, backoff=2, tries=3)
 def generate_image(image_prompt):
     """Generate an image from the prompt."""
     api_url = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-dev"
@@ -188,7 +191,7 @@ def generate_image(image_prompt):
     generation_params = {
         "inputs": image_prompt,
         "parameters": {
-            "num_inference_steps": 25,
+            "num_inference_steps": 50,
             "guidance_scale": 3.5,
             "height": 1024,
             "width": 768,
@@ -203,17 +206,21 @@ def generate_image(image_prompt):
     return image_bytes
 
 
+@retry(Exception, delay=1, backoff=2, tries=3)
 def upscale_image(image_bytes):
-    from gradio_client import Client, handle_file
+    # Create a temporary file to save the input image
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_input:
+        temp_input_path = temp_input.name
+        Image.open(io.BytesIO(image_bytes)).save(temp_input_path)
 
-    Image.open(io.BytesIO(image_bytes)).save("/tmp/image.png")
-
+    # Initialize the Gradio client
     client = Client("LuxOAI/AuraUpscale")
+
+    # Perform the prediction (upscaling)
     _, after = client.predict(
-        input_image=handle_file("/tmp/image.png"),
+        input_image=handle_file(temp_input_path),
         api_name="/process_image",
     )
-    print(after)
     # Read the upscaled image as bytes
     with open(after, "rb") as upscaled_file:
         upscaled_image_bytes = upscaled_file.read()
