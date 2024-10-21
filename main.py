@@ -28,17 +28,20 @@ class ImagePrompt(BaseModel):
 
 
 def main():
-    """Main function to generate an image based on a randomly selected topic."""
+    """Main function to generate an image based on user-selected or random topic."""
     setup_logging()
     validate_api_keys()
 
-    # Step 1: Select a random topic
-    selected_topic = select_random_topic(IDEAS)
+    # Step 1: Get the topic from the user
+    selected_topic = get_user_topic(IDEAS)
 
     # Step 2: Get the topic instructions
     topic_instructions = IDEAS[selected_topic]
 
-    # Step 3: Set up the Groq LLM
+    # Step 3: Ask the user for any specific requests
+    user_request = get_user_request()
+
+    # Step 4: Set up the Groq LLM
     llm = setup_groq_llm()
 
     # Wrap the LLM with structured output
@@ -47,28 +50,28 @@ def main():
     # Get the JSON schema
     schema = ImagePrompt.model_json_schema()
 
-    # Step 4: Create a ChatPromptTemplate with separate system and human messages
+    # Step 5: Create a ChatPromptTemplate with system and human messages
     prompt = create_chat_prompt_template()
 
-    # Step 5: Chain the prompt with the structured LLM
+    # Step 6: Chain the prompt with the structured LLM
     chain = prompt | structured_llm
 
-    # Step 6: Invoke the chain with the topic and instructions
+    # Step 7: Invoke the chain with the topic, instructions, and user request
     image_prompt_data = generate_image_prompt(
-        chain, GUIDE, selected_topic, topic_instructions, schema
+        chain, GUIDE, selected_topic, topic_instructions, schema, user_request
     )
 
-    # Step 7: Extract the final prompt from the validated data
+    # Step 8: Extract the final prompt from the validated data
     image_prompt = image_prompt_data.final_prompt.strip()
     logging.info(f"Generated image prompt:\n{image_prompt}")
 
-    # Step 8: Generate the image
+    # Step 9: Generate the image
     image_bytes = generate_image(image_prompt)
 
-    # Step 9: Upscale the image
+    # Step 10: Upscale the image
     upscaled_image_bytes = upscale_image(image_bytes)
 
-    # Step 10: Save the upscaled image
+    # Step 11: Save the upscaled image
     save_image(selected_topic, upscaled_image_bytes)
 
 
@@ -89,12 +92,48 @@ def validate_api_keys():
         )
 
 
-def select_random_topic(ideas_dict):
-    """Select a random topic from the IDEAS dictionary."""
+def get_user_topic(ideas_dict):
+    """Prompt the user to select a topic or choose a random one."""
     topics = list(ideas_dict.keys())
-    selected = random.choice(topics)
-    logging.info(f"Selected topic: {selected}")
+    print("Available topics:")
+    for idx, topic in enumerate(topics, 1):
+        print(f"{idx}. {topic}")
+
+    user_input = input(
+        "\nEnter the number of the topic you want to select or press Enter for a random topic: "
+    )
+
+    if user_input.strip() == "":
+        selected = random.choice(topics)
+        logging.info(f"Randomly selected topic: {selected}")
+    else:
+        try:
+            selection = int(user_input)
+            if 1 <= selection <= len(topics):
+                selected = topics[selection - 1]
+                logging.info(f"User selected topic: {selected}")
+            else:
+                logging.error("Invalid selection. Selecting a random topic.")
+                selected = random.choice(topics)
+                logging.info(f"Randomly selected topic: {selected}")
+        except ValueError:
+            logging.error("Invalid input. Selecting a random topic.")
+            selected = random.choice(topics)
+            logging.info(f"Randomly selected topic: {selected}")
+
     return selected
+
+
+def get_user_request():
+    """Prompt the user for any specific requests to include in the image prompt."""
+    user_request = input(
+        "\nEnter any specific instructions or details you want to include (or press Enter to skip): "
+    ).strip()
+    if user_request:
+        logging.info(f"User's specific request: {user_request}")
+    else:
+        logging.info("No specific request provided by the user.")
+    return user_request
 
 
 def setup_groq_llm():
@@ -116,7 +155,7 @@ def create_chat_prompt_template():
                 "system",
                 (
                     "You are an image prompt generator specialized in FLUX models. "
-                    "Your task is to create detailed and effective image prompts based on the user's topic and instructions."
+                    "Your task is to create detailed and effective image prompts based on the user's topic, instructions, and specific requests."
                     "No function tool calling is available."
                     "Output the final prompt in JSON format matching the following schema:\n\n"
                     "{schema}\n\n"
@@ -127,7 +166,8 @@ def create_chat_prompt_template():
                 "human",
                 (
                     "Please create a detailed image prompt for the following topic:\n\n"
-                    "{topic}\n\n{instructions}"
+                    "{topic}\n\n{instructions}\n\n"
+                    "Additional user request (if any):\n\n{user_request}"
                 ),
             ),
         ]
@@ -135,7 +175,7 @@ def create_chat_prompt_template():
 
 
 @retry(Exception, delay=1, backoff=2, tries=3)
-def generate_image_prompt(chain, guide, topic, instructions, schema):
+def generate_image_prompt(chain, guide, topic, instructions, schema, user_request):
     """Generate an image prompt using the structured LLM chain."""
     logging.info(f"Requesting image prompt for topic: '{topic}'...")
     try:
@@ -145,6 +185,7 @@ def generate_image_prompt(chain, guide, topic, instructions, schema):
                 "schema": json.dumps(schema),
                 "topic": topic,
                 "instructions": instructions,
+                "user_request": user_request,
             }
         )
     except Exception as e:
@@ -152,24 +193,6 @@ def generate_image_prompt(chain, guide, topic, instructions, schema):
         raise e
 
     return image_prompt_data
-
-
-def save_image(selected_topic, image_bytes):
-    """Save the image to topic directory"""
-    try:
-        image = Image.open(io.BytesIO(image_bytes))
-    except IOError as e:
-        logging.error(f"Failed to open image: {e}")
-        sys.exit(1)
-
-    topic_folder = selected_topic.replace(" ", "_").lower()
-    image_directory = os.path.join("images", topic_folder)
-    os.makedirs(image_directory, exist_ok=True)
-    image_filename = f"{uuid.uuid4()}.png"
-    image_path = os.path.join(image_directory, image_filename)
-    image.save(image_path)
-
-    logging.info(f"Image saved to {image_path}")
 
 
 @retry(Exception, delay=1, backoff=2, tries=3)
@@ -208,6 +231,7 @@ def generate_image(image_prompt):
 
 
 def upscale_image(image_bytes):
+    """Upscale the generated image using a Gradio client."""
     try:
         # Create a temporary file to save the input image
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_input:
@@ -222,9 +246,15 @@ def upscale_image(image_bytes):
             input_image=handle_file(temp_input_path),
             api_name="/process_image",
         )
+
         # Read the upscaled image as bytes
         with open(after, "rb") as upscaled_file:
             upscaled_image_bytes = upscaled_file.read()
+
+        # Clean up temporary files
+        os.remove(temp_input_path)
+        os.remove(after)
+
         return upscaled_image_bytes
     except Exception as e:
         logging.error(f"Error upscaling image: {e}")
@@ -232,6 +262,23 @@ def upscale_image(image_bytes):
         return image_bytes
 
 
+def save_image(selected_topic, image_bytes):
+    """Save the image to topic directory."""
+    try:
+        image = Image.open(io.BytesIO(image_bytes))
+    except IOError as e:
+        logging.error(f"Failed to open image: {e}")
+        sys.exit(1)
+
+    topic_folder = selected_topic.replace(" ", "_").lower()
+    image_directory = os.path.join("images", topic_folder)
+    os.makedirs(image_directory, exist_ok=True)
+    image_filename = f"{uuid.uuid4()}.png"
+    image_path = os.path.join(image_directory, image_filename)
+    image.save(image_path)
+
+    logging.info(f"Image saved to {image_path}")
+
+
 if __name__ == "__main__":
-    for _ in range(15):
-        main()
+    main()
