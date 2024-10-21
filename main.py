@@ -101,7 +101,7 @@ def setup_groq_llm():
     """Initialize the Groq LLM with specified parameters."""
     return ChatGroq(
         model="llama3-70b-8192",
-        temperature=0.2,
+        temperature=0.8,
         max_tokens=None,
         timeout=None,
         max_retries=2,
