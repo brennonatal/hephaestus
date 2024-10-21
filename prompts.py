@@ -91,75 +91,71 @@ IDEAS = {
 
 *"A highly detailed digital painting of a valiant knight in ornate silver armor standing atop a cliff overlooking a vast enchanted forest. The knight holds a glowing sword that emits a soft blue light, illuminating the surrounding area. A majestic dragon with shimmering emerald scales soars in the twilight sky above, its wings casting a shadow over the landscape. Ethereal mist drifts through the ancient trees below, and distant waterfalls cascade down rocky cliffs. The scene is rendered in the style of Frank Frazetta, featuring sharp focus, intricate details, and vibrant colors. Dramatic lighting from the setting sun bathes the scene in hues of purple and orange, creating a magical and epic atmosphere."*
 """,
-    "Minimalist and Abstract Designs": """
-**Instructions:**
-
-- **Topic:**
-    - **Main Subjects:**
-        - Simple geometric shapes (circles, squares, triangles).
-        - Abstract representations of everyday objects.
-        - Silhouettes of animals, plants, or figures.
-        - Conceptual ideas conveyed through minimal elements.
-    - **Themes:**
-        - Balance, harmony, and simplicity.
-        - Emphasis on form and function.
-        - Representations of emotions or concepts through abstract forms.
-- **Material/Medium:**
-    - **Artistic Mediums:**
-        - Vector art with clean lines and smooth curves.
-        - Flat design illustrations.
-        - Monochromatic or duotone schemes.
-        - Textured backgrounds for subtle depth.
-    - **Techniques:**
-        - Negative space utilization.
-        - Minimal shading and gradients.
-        - Emphasis on typography (if text is included).
-- **Style:**
-    - **Artistic Styles:**
-        - Minimalism focusing on essential elements.
-        - Abstract art that emphasizes shapes and colors over realistic representation.
-        - Geometric design with precise mathematical forms.
-    - **Design Principles:**
-        - Symmetry and asymmetry.
-        - Repetition and pattern.
-        - Contrast and alignment.
-- **Shade and Color:**
-    - **Color Palettes:**
-        - Limited color schemes (e.g., black and white, grayscale).
-        - Bold, contrasting colors for impact.
-        - Pastel tones for a softer look.
-    - **Color Usage:**
-        - Strategic use of color to highlight focal points.
-        - Uniform color backgrounds to maintain simplicity.
-- **Sharpness and Detail:**
-    - **Clarity:**
-        - Crisp, clean edges and lines.
-        - High-resolution images to maintain sharpness.
-    - **Simplicity:**
-        - Avoid unnecessary details that distract from the main subject.
-- **Extra Details:**
-    - **Design Elements:**
-        - Use of grids or patterns to create visual interest.
-        - Incorporation of subtle textures (e.g., grain, paper texture).
-    - **Conceptual Elements:**
-        - Hidden images or dual meanings within the design.
-        - Optical illusions created through shape arrangement.
-- **Lighting and Brightness:**
-    - **Lighting Styles:**
-        - Flat lighting with minimal shadows.
-        - Subtle gradients for depth if necessary.
-    - **Emphasis:**
-        - Use brightness to guide the viewer's eye.
-- **Negative Prompts (Optional):**
-    - **Elements to Exclude:**
-        - "No complex backgrounds."
-        - "Avoid detailed textures."
-        - "Exclude unnecessary elements that clutter the design."
-
-**Example Prompt:**
-
-*"A minimalist illustration featuring a single black tree with bare branches set against a pure white background. The tree's silhouette is composed of geometric shapes, creating an abstract representation that blends natural form with mathematical precision. The design emphasizes negative space and perfect symmetry, conveying a sense of solitude and tranquility through simplicity. No gradients or shadows are used, maintaining a flat and clean appearance. The image has crisp lines and sharp edges, ensuring clarity and focus on the central subject."*
-""",
+    "Minimalist and Abstract Art": """
+    **Instructions:**
+    - **Topic:**
+        - **Main Subjects:**
+            - Simple geometric shapes (circles, squares, triangles).
+            - Abstract representations of concepts.
+            - Conceptual ideas conveyed through minimal elements.
+        - **Themes:**
+            - Balance, harmony, and simplicity.
+            - Emphasis on form and function.
+            - Representations of emotions or concepts through abstract forms.
+    - **Material/Medium:**
+        - **Artistic Mediums:**
+            - Vector art with clean lines and smooth curves.
+            - Flat design illustrations.
+            - Monochromatic or duotone schemes.
+            - Textured backgrounds for subtle depth.
+        - **Techniques:**
+            - Negative space utilization.
+            - Minimal shading and gradients.
+            - Emphasis on typography (if text is included).
+    - **Style:**
+        - **Artistic Styles:**
+            - Minimalism focusing on essential elements.
+            - Abstract art that emphasizes shapes and colors over realistic representation.
+            - Geometric design with precise mathematical forms.
+        - **Design Principles:**
+            - Symmetry and asymmetry.
+            - Repetition and pattern.
+            - Contrast and alignment.
+    - **Shade and Color:**
+        - **Color Palettes:**
+            - Limited color schemes (e.g., black and white, grayscale).
+            - Bold, contrasting colors for impact.
+            - Pastel tones for a softer look.
+        - **Color Usage:**
+            - Strategic use of color to highlight focal points.
+            - Uniform color backgrounds to maintain simplicity.
+    - **Sharpness and Detail:**
+        - **Clarity:**
+            - Crisp, clean edges and lines.
+            - High-resolution images to maintain sharpness.
+        - **Simplicity:**
+            - Avoid unnecessary details that distract from the main subject.
+    - **Extra Details:**
+        - **Design Elements:**
+            - Use of grids or patterns to create visual interest.
+            - Incorporation of subtle textures (e.g., grain, paper texture).
+        - **Conceptual Elements:**
+            - Hidden images or dual meanings within the design.
+            - Optical illusions created through shape arrangement.
+    - **Lighting and Brightness:**
+        - **Lighting Styles:**
+            - Flat lighting with minimal shadows.
+            - Subtle gradients for depth if necessary.
+        - **Emphasis:**
+            - Use brightness to guide the viewer's eye.
+    - **Negative Prompts (Optional):**
+        - **Elements to Exclude:**
+            - "No complex backgrounds."
+            - "Avoid detailed textures."
+            - "Exclude unnecessary elements that clutter the design."
+    **Example Prompt:**
+    *"A minimalist illustration featuring a single black tree with bare branches set against a pure white background. The tree's silhouette is composed of geometric shapes, creating an abstract representation that blends natural form with mathematical precision. The design emphasizes negative space and perfect symmetry, conveying a sense of solitude and tranquility through simplicity. No gradients or shadows are used, maintaining a flat and clean appearance. The image has crisp lines and sharp edges, ensuring clarity and focus on the central subject."*
+    """,
     "Surreal and Dreamlike Imagery": """
 **Instructions:**
 

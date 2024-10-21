@@ -116,7 +116,8 @@ def create_chat_prompt_template():
                 "system",
                 (
                     "You are an image prompt generator specialized in FLUX models. "
-                    "Your task is to create detailed and effective image prompts based on the user's topic and instructions. "
+                    "Your task is to create detailed and effective image prompts based on the user's topic and instructions."
+                    "No function tool calling is available."
                     "Output the final prompt in JSON format matching the following schema:\n\n"
                     "{schema}\n\n"
                     "Ensure that your output is ONLY the JSON object without any additional explanations or text!\n\n{GUIDE}"
@@ -148,7 +149,7 @@ def generate_image_prompt(chain, guide, topic, instructions, schema):
         )
     except Exception as e:
         logging.error(f"Error generating image prompt: {e}")
-        sys.exit(1)
+        raise e
 
     return image_prompt_data
 
@@ -184,7 +185,7 @@ def generate_image(image_prompt):
             response.raise_for_status()
         except requests.HTTPError as e:
             logging.error(f"HTTP error occurred: {e}")
-            sys.exit(1)
+            raise e
         return response.content
 
     logging.info("Generating image...")
@@ -206,26 +207,31 @@ def generate_image(image_prompt):
     return image_bytes
 
 
-@retry(Exception, delay=1, backoff=2, tries=3)
 def upscale_image(image_bytes):
-    # Create a temporary file to save the input image
-    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_input:
-        temp_input_path = temp_input.name
-        Image.open(io.BytesIO(image_bytes)).save(temp_input_path)
+    try:
+        # Create a temporary file to save the input image
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_input:
+            temp_input_path = temp_input.name
+            Image.open(io.BytesIO(image_bytes)).save(temp_input_path)
 
-    # Initialize the Gradio client
-    client = Client("LuxOAI/AuraUpscale")
+        # Initialize the Gradio client
+        client = Client("LuxOAI/AuraUpscale", hf_token=os.environ["HF_TOKEN"])
 
-    # Perform the prediction (upscaling)
-    _, after = client.predict(
-        input_image=handle_file(temp_input_path),
-        api_name="/process_image",
-    )
-    # Read the upscaled image as bytes
-    with open(after, "rb") as upscaled_file:
-        upscaled_image_bytes = upscaled_file.read()
-    return upscaled_image_bytes
+        # Perform the prediction (upscaling)
+        _, after = client.predict(
+            input_image=handle_file(temp_input_path),
+            api_name="/process_image",
+        )
+        # Read the upscaled image as bytes
+        with open(after, "rb") as upscaled_file:
+            upscaled_image_bytes = upscaled_file.read()
+        return upscaled_image_bytes
+    except Exception as e:
+        logging.error(f"Error upscaling image: {e}")
+        logging.info("Returning original image")
+        return image_bytes
 
 
 if __name__ == "__main__":
-    main()
+    for _ in range(15):
+        main()
