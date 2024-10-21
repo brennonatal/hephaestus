@@ -9,6 +9,8 @@ import time
 import uuid
 
 import requests
+
+# from diffusers import FluxControlNetModel, FluxControlNetPipeline
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 from PIL import Image
@@ -45,7 +47,7 @@ def main():
     schema = ImagePrompt.model_json_schema()
 
     # Step 4: Create a ChatPromptTemplate with separate system and human messages
-    prompt = create_chat_prompt_template(GUIDE, schema)
+    prompt = create_chat_prompt_template()
 
     # Step 5: Chain the prompt with the structured LLM
     chain = prompt | structured_llm
@@ -59,8 +61,14 @@ def main():
     image_prompt = image_prompt_data.final_prompt.strip()
     logging.info(f"Generated image prompt:\n{image_prompt}")
 
-    # Step 8: Generate and save the image
-    generate_and_save_image(image_prompt, selected_topic)
+    # Step 8: Generate the image
+    image_bytes = generate_image(image_prompt)
+
+    # Step 9: Upscale the image
+    upscaled_image_bytes = upscale_image(image_bytes)
+
+    # Step 10: Save the upscaled image
+    save_image(selected_topic, upscaled_image_bytes)
 
 
 def setup_logging():
@@ -143,8 +151,26 @@ def generate_image_prompt(chain, guide, topic, instructions, schema):
     return image_prompt_data
 
 
-def generate_and_save_image(image_prompt, selected_topic):
-    """Generate an image from the prompt and save it to a directory."""
+def save_image(selected_topic, image_bytes):
+    """Save the image to topic directory"""
+    try:
+        image = Image.open(io.BytesIO(image_bytes))
+    except IOError as e:
+        logging.error(f"Failed to open image: {e}")
+        sys.exit(1)
+
+    topic_folder = selected_topic.replace(" ", "_").lower()
+    image_directory = os.path.join("images", topic_folder)
+    os.makedirs(image_directory, exist_ok=True)
+    image_filename = f"{uuid.uuid4()}.png"
+    image_path = os.path.join(image_directory, image_filename)
+    image.save(image_path)
+
+    logging.info(f"Image saved to {image_path}")
+
+
+def generate_image(image_prompt):
+    """Generate an image from the prompt."""
     api_url = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-dev"
     hf_token = os.environ["HF_TOKEN"]
     headers = {"Authorization": f"Bearer {hf_token}"}
@@ -174,20 +200,24 @@ def generate_and_save_image(image_prompt, selected_topic):
     elapsed_time = time.time() - start_time
     logging.info(f"Image generated in {elapsed_time:.2f} seconds.")
 
-    # Save the image
-    try:
-        image = Image.open(io.BytesIO(image_bytes))
-    except IOError as e:
-        logging.error(f"Failed to open image: {e}")
-        sys.exit(1)
+    return image_bytes
 
-    topic_folder = selected_topic.replace(" ", "_").lower()
-    os.makedirs(topic_folder, exist_ok=True)
-    image_filename = f"{uuid.uuid4()}.png"
-    image_path = os.path.join("images", topic_folder, image_filename)
-    image.save(image_path)
 
-    logging.info(f"Image saved to {image_path}")
+def upscale_image(image_bytes):
+    from gradio_client import Client, handle_file
+
+    Image.open(io.BytesIO(image_bytes)).save("/tmp/image.png")
+
+    client = Client("LuxOAI/AuraUpscale")
+    _, after = client.predict(
+        input_image=handle_file("/tmp/image.png"),
+        api_name="/process_image",
+    )
+    print(after)
+    # Read the upscaled image as bytes
+    with open(after, "rb") as upscaled_file:
+        upscaled_image_bytes = upscaled_file.read()
+    return upscaled_image_bytes
 
 
 if __name__ == "__main__":
