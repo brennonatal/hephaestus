@@ -28,7 +28,7 @@ class ImagePrompt(BaseModel):
 
 
 def main():
-    """Main function to generate an image based on user-selected or random topic."""
+    """Main function to generate images based on user-selected or random topic."""
     setup_logging()
     validate_api_keys()
 
@@ -41,7 +41,10 @@ def main():
     # Step 3: Ask the user for any specific requests
     user_request = get_user_request()
 
-    # Step 4: Set up the Groq LLM
+    # Step 4: Ask the user for batch size
+    batch_size = get_batch_size()
+
+    # Step 5: Set up the Groq LLM
     llm = setup_groq_llm()
 
     # Wrap the LLM with structured output
@@ -50,29 +53,41 @@ def main():
     # Get the JSON schema
     schema = ImagePrompt.model_json_schema()
 
-    # Step 5: Create a ChatPromptTemplate with system and human messages
+    # Step 6: Create a ChatPromptTemplate with system and human messages
     prompt = create_chat_prompt_template()
 
-    # Step 6: Chain the prompt with the structured LLM
+    # Step 7: Chain the prompt with the structured LLM
     chain = prompt | structured_llm
 
-    # Step 7: Invoke the chain with the topic, instructions, and user request
-    image_prompt_data = generate_image_prompt(
-        chain, GUIDE, selected_topic, topic_instructions, schema, user_request
-    )
+    # Step 8: Initialize list to store image paths
+    image_paths = []
 
-    # Step 8: Extract the final prompt from the validated data
-    image_prompt = image_prompt_data.final_prompt.strip()
-    logging.info(f"Generated image prompt:\n{image_prompt}")
+    # Step 9: Loop for batch_size times
+    for i in range(1, batch_size + 1):
+        logging.info(f"Processing image {i}/{batch_size}...")
+        # Invoke the chain
+        image_prompt_data = generate_image_prompt(
+            chain, GUIDE, selected_topic, topic_instructions, schema, user_request
+        )
 
-    # Step 9: Generate the image
-    image_bytes = generate_image(image_prompt)
+        # Extract the final prompt
+        image_prompt = image_prompt_data.final_prompt.strip()
+        logging.info(f"Generated image prompt:\n{image_prompt}")
 
-    # Step 10: Upscale the image
-    upscaled_image_bytes = upscale_image(image_bytes)
+        # Generate the image
+        image_bytes = generate_image(image_prompt)
 
-    # Step 11: Save the upscaled image
-    save_image(selected_topic, upscaled_image_bytes)
+        # Upscale the image
+        upscaled_image_bytes = upscale_image(image_bytes)
+
+        # Save the image
+        image_path = save_image(selected_topic, upscaled_image_bytes)
+        image_paths.append(image_path)
+
+    # Step 10: Log all image paths
+    logging.info("Batch generation completed. Image paths:")
+    for path in image_paths:
+        logging.info(path)
 
 
 def setup_logging():
@@ -136,6 +151,28 @@ def get_user_request():
     return user_request
 
 
+def get_batch_size():
+    """Prompt the user to enter the number of images to generate."""
+    while True:
+        user_input = input(
+            "\nEnter the number of images you want to generate (default is 1): "
+        ).strip()
+        if user_input == "":
+            batch_size = 1
+            logging.info("Defaulting to generating 1 image.")
+            break
+        try:
+            batch_size = int(user_input)
+            if batch_size >= 1:
+                logging.info(f"Batch size selected: {batch_size}")
+                break
+            else:
+                logging.warning("Please enter a positive integer.")
+        except ValueError:
+            logging.warning("Invalid input. Please enter a positive integer.")
+    return batch_size
+
+
 def setup_groq_llm():
     """Initialize the Groq LLM with specified parameters."""
     return ChatGroq(
@@ -155,8 +192,8 @@ def create_chat_prompt_template():
                 "system",
                 (
                     "You are an image prompt generator specialized in FLUX models. "
-                    "Your task is to create detailed and effective image prompts based on the user's topic, instructions, and specific requests."
-                    "No function tool calling is available."
+                    "Your task is to create detailed and effective image prompts based on the user's topic, instructions, and specific requests. "
+                    "No function tool calling is available. "
                     "Output the final prompt in JSON format matching the following schema:\n\n"
                     "{schema}\n\n"
                     "Ensure that your output is ONLY the JSON object without any additional explanations or text!\n\n{GUIDE}"
@@ -263,7 +300,7 @@ def upscale_image(image_bytes):
 
 
 def save_image(selected_topic, image_bytes):
-    """Save the image to topic directory."""
+    """Save the image to topic directory and return the image path."""
     try:
         image = Image.open(io.BytesIO(image_bytes))
     except IOError as e:
@@ -278,6 +315,7 @@ def save_image(selected_topic, image_bytes):
     image.save(image_path)
 
     logging.info(f"Image saved to {image_path}")
+    return image_path
 
 
 if __name__ == "__main__":

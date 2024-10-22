@@ -148,11 +148,7 @@ IDEAS = {
             - Subtle gradients for depth if necessary.
         - **Emphasis:**
             - Use brightness to guide the viewer's eye.
-    - **Negative Prompts (Optional):**
-        - **Elements to Exclude:**
-            - "No complex backgrounds."
-            - "Avoid detailed textures."
-            - "Exclude unnecessary elements that clutter the design."
+            
     **Example Prompt:**
     *"A minimalist illustration featuring a single black tree with bare branches set against a pure white background. The tree's silhouette is composed of geometric shapes, creating an abstract representation that blends natural form with mathematical precision. The design emphasizes negative space and perfect symmetry, conveying a sense of solitude and tranquility through simplicity. No gradients or shadows are used, maintaining a flat and clean appearance. The image has crisp lines and sharp edges, ensuring clarity and focus on the central subject."*
     """,
@@ -216,11 +212,6 @@ IDEAS = {
         - Dramatic lighting with stark contrasts for a more unsettling feel.
     - **Emphasis:**
         - Use light and shadow to guide the viewer's focus and create depth.
-- **Negative Prompts (Optional):**
-    - **Elements to Exclude:**
-        - "Avoid realistic settings without surreal elements."
-        - "No modern technology unless incorporated in a surreal way."
-        - "Exclude clichéd symbols unless reimagined creatively."
 
 **Example Prompt:**
 
@@ -297,11 +288,6 @@ IDEAS = {
         - Soft illumination from distant galaxies.
     - **Emphasis:**
         - Use lighting to create depth and highlight the scale of space.
-- **Negative Prompts (Optional):**
-    - **Elements to Exclude:**
-        - "Avoid unrealistic depictions unless stylistically intended."
-        - "No Earth-bound elements unless part of the concept."
-        - "Exclude low-resolution textures and blur."
 
 **Example Prompt:**
 
@@ -381,9 +367,6 @@ When creating image prompts, consider incorporating the following key components
 9. **Lighting and Brightness:**
     - Describe lighting conditions (e.g., soft ambient lighting, dramatic shadows, neon lights).
     - Lighting affects the overall feel of the image.
-10. **Negative Prompts (Optional):**
-    - Include elements to avoid (e.g., "no blur," "avoid graininess," "exclude modern elements").
-    - Helps in refining the output by eliminating undesired features.
 
 ### **Tips for Crafting Effective Prompts:**
 
