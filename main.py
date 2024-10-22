@@ -1,3 +1,4 @@
+import base64
 import getpass
 import io
 import json
@@ -8,6 +9,7 @@ import sys
 import tempfile
 import time
 import uuid
+from typing import Any, Dict
 
 import requests
 from gradio_client import Client, handle_file
@@ -44,7 +46,10 @@ def main():
     # Step 4: Ask the user for batch size
     batch_size = get_batch_size()
 
-    # Step 5: Set up the Groq LLM
+    # Step 5: Ask the user upscaling preferences
+    upscale_factor = get_upscale_factor()
+
+    # Step 6: Set up the Groq LLM
     llm = setup_groq_llm()
 
     # Wrap the LLM with structured output
@@ -53,16 +58,16 @@ def main():
     # Get the JSON schema
     schema = ImagePrompt.model_json_schema()
 
-    # Step 6: Create a ChatPromptTemplate with system and human messages
+    # Step 7: Create a ChatPromptTemplate with system and human messages
     prompt = create_chat_prompt_template()
 
-    # Step 7: Chain the prompt with the structured LLM
+    # Step 8: Chain the prompt with the structured LLM
     chain = prompt | structured_llm
 
-    # Step 8: Initialize list to store image paths
+    # Step 9: Initialize list to store image paths
     image_paths = []
 
-    # Step 9: Loop for batch_size times
+    # Step 10: Loop for batch_size times
     for i in range(1, batch_size + 1):
         logging.info(f"Processing image {i}/{batch_size}...")
         # Invoke the chain
@@ -75,16 +80,16 @@ def main():
         logging.info(f"Generated image prompt:\n{image_prompt}")
 
         # Generate the image
-        image_bytes = generate_image(image_prompt)
+        image = generate_image(image_prompt, upscale_factor)
 
         # Upscale the image
-        upscaled_image_bytes = upscale_image(image_bytes)
+        # upscaled_image_bytes = upscale_image(image_bytes)
 
         # Save the image
-        image_path = save_image(selected_topic, upscaled_image_bytes)
+        image_path = save_image(selected_topic, image)
         image_paths.append(image_path)
 
-    # Step 10: Log all image paths
+    # Step 11: Log all image paths
     logging.info("Batch generation completed. Image paths:")
     for path in image_paths:
         logging.info(path)
@@ -104,6 +109,10 @@ def validate_api_keys():
     if "HF_TOKEN" not in os.environ:
         os.environ["HF_TOKEN"] = getpass.getpass(
             "Enter your HuggingFace access token: "
+        )
+    if "INFERENCE_ENDPOINT" not in os.environ:
+        os.environ["INFERENCE_ENDPOINT"] = getpass.getpass(
+            "Enter your Inference Endpoint: "
         )
 
 
@@ -173,6 +182,30 @@ def get_batch_size():
     return batch_size
 
 
+def get_upscale_factor():
+    """Prompt the user to enter the upscaling factor for the images."""
+    while True:
+        user_input = input(
+            "\nEnter the upscaling factor (default is 1, maximum is 8): "
+        ).strip()
+        if user_input in ["", "1"]:
+            upscale_factor = 0
+            logging.info("Defaulting to upscaling factor of 1.")
+            break
+        try:
+            upscale_factor = int(user_input)
+            if upscale_factor in [2, 4, 8]:
+                logging.info(f"Selected upscaling factor of {upscale_factor}.")
+                break
+            else:
+                logging.warning("Unsupported upscale factor. Choose from 2, 4, or 8.")
+        except ValueError:
+            logging.warning(
+                "Invalid input. Please enter a numeric value between 1 and 8."
+            )
+    return upscale_factor
+
+
 def setup_groq_llm():
     """Initialize the Groq LLM with specified parameters."""
     return ChatGroq(
@@ -233,80 +266,120 @@ def generate_image_prompt(chain, guide, topic, instructions, schema, user_reques
 
 
 @retry(Exception, delay=1, backoff=2, tries=3)
-def generate_image(image_prompt):
-    """Generate an image from the prompt."""
-    api_url = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-dev"
+def generate_image(image_prompt, upscale_factor=0) -> Image.Image:
+    """Generate an image from the prompt, optionally upscaling it."""
+    api_url = os.environ["INFERENCE_ENDPOINT"]
     hf_token = os.environ["HF_TOKEN"]
     headers = {"Authorization": f"Bearer {hf_token}"}
 
-    def query(payload):
-        response = requests.post(api_url, headers=headers, json=payload)
-        try:
-            response.raise_for_status()
-        except requests.HTTPError as e:
-            logging.error(f"HTTP error occurred: {e}")
-            raise e
-        return response.content
+    def encode_image_to_base64(image: Image.Image) -> str:
+        """
+        Encode a PIL Image to a base64 string.
 
-    logging.info("Generating image...")
+        :param image: PIL Image.
+        :return: Base64 encoded string of the image.
+        """
+        try:
+            buffered = io.BytesIO()
+            image.save(buffered, format="PNG")
+            image_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+            return image_base64
+        except Exception as e:
+            logging.error(f"Failed to encode image: {e}")
+            raise
+
+    def decode_base64_to_image(image_base64: str) -> Image.Image:
+        """
+        Decode a base64 string to a PIL Image.
+
+        :param image_base64: Base64 encoded image string.
+        :return: PIL Image object.
+        """
+        try:
+            image_bytes = base64.b64decode(image_base64)
+            image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+            return image
+        except Exception as e:
+            logging.error(f"Failed to decode image: {e}")
+            raise
+
+    def query(payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Send a POST request to the inference endpoint.
+
+        :param payload: The JSON payload for the request.
+        :return: JSON response from the server.
+        """
+        try:
+            response = requests.post(api_url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except requests.HTTPError as http_err:
+            logging.error(f"HTTP error occurred: {http_err} - {response.text}")
+            raise
+        except Exception as err:
+            logging.error(f"An error occurred: {err}")
+            raise
+
+    logging.info("Generating low-resolution image...")
+    # Generate the image at lower resolution
     generation_params = {
         "inputs": image_prompt,
-        "parameters": {
-            "num_inference_steps": 50,
-            "guidance_scale": 3.5,
-            "height": 1024,
-            "width": 768,
-        },
+        "num_inference_steps": 50,
+        "guidance_scale": 3.5,
+        "height": 1024,
+        "width": 768,
+        # Do not include 'upscale_factor' here
     }
 
-    start_time = time.time()
-    image_bytes = query(generation_params)
-    elapsed_time = time.time() - start_time
-    logging.info(f"Image generated in {elapsed_time:.2f} seconds.")
-
-    return image_bytes
-
-
-def upscale_image(image_bytes):
-    """Upscale the generated image using a Gradio client."""
     try:
-        # Create a temporary file to save the input image
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_input:
-            temp_input_path = temp_input.name
-            Image.open(io.BytesIO(image_bytes)).save(temp_input_path)
+        # Generate low-resolution image
+        response = query(generation_params)
+        # Extract the base64 image from the response
+        generated_image_b64 = response.get("image", "")
+        if not generated_image_b64:
+            logging.error("No image found in the response.")
+            return None
 
-        # Initialize the Gradio client
-        client = Client("LuxOAI/AuraUpscale", hf_token=os.environ["HF_TOKEN"])
+        # Decode the base64 image
+        generated_image = decode_base64_to_image(generated_image_b64)
 
-        # Perform the prediction (upscaling)
-        _, after = client.predict(
-            input_image=handle_file(temp_input_path),
-            api_name="/process_image",
-        )
+        if upscale_factor > 0:
+            # Upscale the image
+            logging.info("Upscaling image...")
+            # Encode the generated image to base64
+            control_image_b64 = encode_image_to_base64(generated_image)
 
-        # Read the upscaled image as bytes
-        with open(after, "rb") as upscaled_file:
-            upscaled_image_bytes = upscaled_file.read()
+            # Prepare upscaling payload
+            upscaling_params = {
+                "inputs": "",  # Empty prompt as per the upscaling example
+                "control_image": control_image_b64,
+                "upscale_factor": upscale_factor,
+                "num_inference_steps": 28,
+                "guidance_scale": 3.5,
+                "controlnet_conditioning_scale": 0.6,
+                # Heights and widths are handled by the server based on the control image
+            }
 
-        # Clean up temporary files
-        os.remove(temp_input_path)
-        os.remove(after)
+            # Send upscaling request
+            upscaled_response = query(upscaling_params)
+            upscaled_image_b64 = upscaled_response.get("image", "")
+            if not upscaled_image_b64:
+                logging.error("No image found in the upscaling response.")
+                return generated_image  # Return the low-res image if upscaling fails
 
-        return upscaled_image_bytes
+            # Decode the upscaled image
+            upscaled_image = decode_base64_to_image(upscaled_image_b64)
+            return upscaled_image
+        else:
+            return generated_image
     except Exception as e:
-        logging.error(f"Error upscaling image: {e}")
-        logging.info("Returning original image")
-        return image_bytes
+        logging.error(f"Error generating image: {e}")
+        raise e
 
 
-def save_image(selected_topic, image_bytes):
+def save_image(selected_topic, image):
     """Save the image to topic directory and return the image path."""
-    try:
-        image = Image.open(io.BytesIO(image_bytes))
-    except IOError as e:
-        logging.error(f"Failed to open image: {e}")
-        sys.exit(1)
-
     topic_folder = selected_topic.replace(" ", "_").lower()
     image_directory = os.path.join("images", topic_folder)
     os.makedirs(image_directory, exist_ok=True)
