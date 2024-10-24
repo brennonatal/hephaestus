@@ -1,5 +1,3 @@
-import logging
-
 from langgraph.graph import StateGraph
 
 from agent.nodes import prompt_generator
