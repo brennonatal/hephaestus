@@ -36,10 +36,10 @@ if __name__ == "__main__":
     # Step 6: Get agentic workflow
     graph = get_workflow()
 
-    # Step 9: Initialize list to store image paths
+    # Step 7: Initialize list to store image paths
     image_paths = []
 
-    # Step 10: Loop for batch_size times
+    # Step 8: Loop for batch_size times
     for i in range(1, batch_size + 1):
         logging.info(f"Processing image {i}/{batch_size}...")
         # Invoke the workflow
@@ -53,7 +53,7 @@ if __name__ == "__main__":
         )
 
         # Extract the final prompt
-        image_prompt = image_prompt_data.final_prompt.strip()
+        image_prompt = image_prompt_data["final_prompt"].strip()
         logging.info(f"Generated image prompt:\n{image_prompt}")
         # Generate the image
         image = generate_image(image_prompt, upscale_factor)
@@ -62,7 +62,7 @@ if __name__ == "__main__":
         image_path = save_image(selected_topic, image)
         image_paths.append(image_path)
 
-    # Step 11: Log all image paths
+    # Step 9: Log all image paths
     logging.info("Batch generation completed. Image paths:")
     for path in image_paths:
         logging.info(path)

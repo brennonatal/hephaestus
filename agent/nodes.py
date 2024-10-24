@@ -24,9 +24,16 @@ def _get_model():
         return None
 
 
-def create_chat_prompt_template():
-    """Create a ChatPromptTemplate with system and human messages."""
-    return ChatPromptTemplate.from_messages(
+# Define the function that calls the model
+def prompt_generator(state):
+    guide = state["guide"]
+    theme = state["theme"]
+    instructions = state["instructions"]
+    request = state["request"]
+
+    model = _get_model()
+
+    prompt = ChatPromptTemplate.from_messages(
         [
             (
                 "system",
@@ -39,7 +46,7 @@ def create_chat_prompt_template():
                 ),
             ),
             (
-                "human",
+                "user",
                 (
                     "Please create a detailed image prompt for the following topic:\n\n"
                     "{theme}\n\n{instructions}\n\n"
@@ -50,20 +57,6 @@ def create_chat_prompt_template():
         ]
     )
 
-
-# Define the function that calls the model
-def prompt_generator(state):
-    guide = state["guide"]
-    theme = state["theme"]
-    instructions = state["instructions"]
-    request = state["request"]
-
-    model = _get_model()
-
-    # Step 7: Create a ChatPromptTemplate with system and human messages
-    prompt = create_chat_prompt_template()
-
-    # Step 8: Chain the prompt with the structured LLM
     chain = prompt | model
     response = chain.invoke(
         {
